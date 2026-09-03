@@ -2,6 +2,5 @@
   "functions": {
     "api/tmdb/[[...path]].js": { "maxDuration": 15 },
     "api/img.js": { "maxDuration": 15 }
-  },
-  "copyright": "TMDb data provided under CC BY-NC 4.0 by TMDb contributors / image.tmdb.org"
+  }
 }
