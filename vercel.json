@@ -1,6 +1,0 @@
-{
-  "functions": {
-    "api/tmdb/[[...path]].js": { "maxDuration": 15 },
-    "api/img.js": { "maxDuration": 15 }
-  }
-}
