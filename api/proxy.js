@@ -36,13 +36,37 @@ module.exports = async (req, res) => {
 
   try {
     if (kind === "search") {
+      const lang = q("language") || "zh-CN";
       const qs = new URLSearchParams({
         api_key: apiKey,
         query: q("query"),
-        language: q("language") || "zh-CN",
+        language: lang,
         include_adult: q("include_adult") || "false",
       });
-      return sendUpstream(await fetch(`https://api.themoviedb.org/3/search/movie?${qs}`));
+      const upstream = await fetch(`https://api.themoviedb.org/3/search/movie?${qs}`);
+      if (!upstream.ok) return sendUpstream(upstream);
+      const data = await upstream.json();
+      // 为前 8 条并行补导演 + 前两名主演（language=zh-CN 时 TMDb 有人名翻译，中文优先天然满足）
+      const top = (data.results || []).slice(0, 8);
+      const credits = await Promise.all(top.map(async (m) => {
+        try {
+          const r = await fetch(`https://api.themoviedb.org/3/movie/${m.id}/credits?api_key=${apiKey}&language=${encodeURIComponent(lang)}`);
+          if (!r.ok) return null;
+          return await r.json();
+        } catch (e) { return null; }
+      }));
+      top.forEach((m, i) => {
+        const c = credits[i];
+        if (c) {
+          m.director = (c.crew || []).find((x) => x.job === "Director")?.name || "";
+          m.cast_top2 = (c.cast || []).slice(0, 2).map((x) => x.name);
+        }
+      });
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.status(200);
+      res.setHeader("content-type", "application/json; charset=utf-8");
+      res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
+      return res.send(JSON.stringify(data));
     }
     if (kind === "movie" || kind === "credits") {
       const id = q("id");
